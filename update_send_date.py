@@ -99,39 +99,25 @@ def convert_to_date(message):
     return None
 
 
-# %%
-# 引当待ちフェーズ、かつ、Mark1がチェックされている商品の一覧を取得
-first_order_list = request_crossmall(
-    "get_order",
-    {
-        "account": company_code,
-        "phase_name": "注文確認",
-    },
-    "Result",
-    "order_number",
-)
-order_number_list = list(first_order_list)
-
-if len(first_order_list) > 99:
-    order_list = request_crossmall(
+def main(args):
+    # 引当待ちフェーズ、かつ、Mark1がチェックされている商品の一覧を取得
+    first_order_list = request_crossmall(
         "get_order",
         {
             "account": company_code,
-            "order_number": first_order_list[-1],
-            "condition": 1,
             "phase_name": "注文確認",
         },
         "Result",
         "order_number",
     )
-    order_number_list += order_list
-    while len(order_list) > 99 | len(order_number_list) < 200:
-        time.sleep(1)
+    order_number_list = list(first_order_list)
+
+    if len(first_order_list) > 99:
         order_list = request_crossmall(
             "get_order",
             {
                 "account": company_code,
-                "order_number": order_list[-1],
+                "order_number": first_order_list[-1],
                 "condition": 1,
                 "phase_name": "注文確認",
             },
@@ -139,33 +125,46 @@ if len(first_order_list) > 99:
             "order_number",
         )
         order_number_list += order_list
+        while len(order_list) > 99:
+            time.sleep(0.5)
+            order_list = request_crossmall(
+                "get_order",
+                {
+                    "account": company_code,
+                    "order_number": order_list[-1],
+                    "condition": 1,
+                    "phase_name": "注文確認",
+                },
+                "Result",
+                "order_number",
+            )
+            order_number_list += order_list
 
-# すべてのorderに関して、
-# 商品詳細情報を取得
-lead_time_text_list = []
-for order_number in order_number_list[:10]:
-    time.sleep(1)
-    response = request_crossmall(
-        "get_order_detail",
-        {
-            "account": company_code,
-            "order_number": order_number,
-        },
-        "lead_time_text",
-    )
-    lead_time_text_list.append(response)
-
-    # 発送日に転記
-    update_response = request_crossmall(
-        "upd_order_phase",
-        {
-            "account": company_code,
-            "order_number": order_number,
-            "after_phase_name": "引当待ち",
-            "delivery_date": convert_to_date(response),
-            "delivery_date_update": 1,
-        },
-        "UpdStatus",
-    )
-    if update_response != "success":
-        raise ConnectionError("発送日の更新で失敗しました。")
+    # すべてのorderに関して、
+    # 商品詳細情報を取得
+    lead_time_text_list = []
+    for order_number in order_number_list:
+        time.sleep(0.5)
+        response = request_crossmall(
+            "get_order_detail",
+            {
+                "account": company_code,
+                "order_number": order_number,
+            },
+            "lead_time_text",
+        )
+        lead_time_text_list.append(response)
+        # 発送日に転記
+        update_response = request_crossmall(
+            "upd_order_phase",
+            {
+                "account": company_code,
+                "order_number": order_number,
+                "after_phase_name": "引当待ち",
+                "delivery_date": convert_to_date(response),
+                "delivery_date_update": 1,
+            },
+            "UpdStatus",
+        )
+        if update_response != "success":
+            raise ConnectionError("発送日の更新で失敗しました。")
