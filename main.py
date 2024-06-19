@@ -1,15 +1,23 @@
 # %%
 import hashlib
+import os
+import re
 import time
 import urllib.parse
 import xml.etree.ElementTree as ET
+from datetime import date, timedelta
 
 import pandas
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 endpoint = "https://crossmall.jp/"
-secret_key = "TKe5dru05FZ1"
-company_code = "4816"
+secret_key = os.environ["SECRET_KEY"]
+company_code = os.environ["COMPANY_CODE"]
+
+today = date.today()
 
 
 def request_crossmall(
@@ -31,7 +39,10 @@ def request_crossmall(
     signing = generate_md5_hash(signing_string)
 
     url = f"{endpoint}webapi2/{path}?{encoded_params}&signing={signing}"
-    response = requests.get(url=url)
+    try:
+        response = requests.get(url=url)
+    except:
+        raise ConnectionError(f"CrossmallのAPIでエラー発生。params: {params}")
 
     root = ET.fromstring(response.text)
 
@@ -50,66 +61,111 @@ def request_crossmall(
         return response_list
 
 
+# 日付部分を標準的な形式に変換する関数
+def convert_to_date(message):
+    # 正規表現パターンを定義
+    patterns = [
+        r"(\d+)月中旬",  # 例: '7月中旬'
+        r"(\d+)月末",  # 例: '6月末'
+        r"(\d+)月末～(\d+)月上旬",  # 例: '6月末～7月上旬'
+        r"(\d+)月上旬",  # 例: '7月上旬'
+        r"(\d+)～(\d+)日",  # 例: '3～5日より発送予定となります'
+        r"(\d+)日以内",  # 例: '7日以内に発送予定となります'
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, message)
+        if match:
+            if pattern == patterns[0]:  # (\d+)月中旬
+                month = int(match.group(1))
+                return (date(today.year, month, 20)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[1]:  # (\d+)月末
+                month = int(match.group(1))
+                return (date(today.year, month, 30)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[2]:  # (\d+)月末～(\d+)月上旬
+                end_month = int(match.group(2))
+                return (date(today.year, month, 10)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[3]:  # (\d+)月上旬
+                month = int(match.group(1))
+                return (date(today.year, month, 10)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[4]:  # (\d+)～(\d+)日より発送予定となります
+                start_day = int(match.group(1))
+                end_day = int(match.group(2))
+                return (today + timedelta(days=end_day)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[5]:  # (\d+)日以内に発送予定となります
+                days = int(match.group(1))
+                return (today + timedelta(days=days)).strftime(format="%Y-%m-%d")
+
+    return None
+
+
+# %%
 # 引当待ちフェーズ、かつ、Mark1がチェックされている商品の一覧を取得
 first_order_list = request_crossmall(
     "get_order",
     {
         "account": company_code,
+        "phase_name": "注文確認",
     },
     "Result",
     "order_number",
 )
-
-output_list = list(first_order_list)
+order_number_list = list(first_order_list)
 
 if len(first_order_list) > 99:
     order_list = request_crossmall(
         "get_order",
-        {"account": company_code, "order_number": first_order_list[-1], "condition": 1},
+        {
+            "account": company_code,
+            "order_number": first_order_list[-1],
+            "condition": 1,
+            "phase_name": "注文確認",
+        },
         "Result",
         "order_number",
     )
-    output_list += order_list
-    while len(order_list) > 99:
+    order_number_list += order_list
+    while len(order_list) > 99 | len(order_number_list) < 200:
         time.sleep(1)
         order_list = request_crossmall(
             "get_order",
-            {"account": company_code, "order_number": order_list[-1], "condition": 1},
+            {
+                "account": company_code,
+                "order_number": order_list[-1],
+                "condition": 1,
+                "phase_name": "注文確認",
+            },
             "Result",
             "order_number",
         )
-        output_list += order_list
+        order_number_list += order_list
 
-print(output_list)
-
-# %%
 # すべてのorderに関して、
 # 商品詳細情報を取得
-print(
-    request_crossmall(
+lead_time_text_list = []
+for order_number in order_number_list[:10]:
+    time.sleep(1)
+    response = request_crossmall(
         "get_order_detail",
         {
             "account": company_code,
-            "order_number": 270,
+            "order_number": order_number,
         },
         "lead_time_text",
     )
-)
+    lead_time_text_list.append(response)
 
-# 文字を正規表現で取得？リスト化？
-
-
-# 発送日に転記
-print(
-    request_crossmall(
+    # 発送日に転記
+    update_response = request_crossmall(
         "upd_order_phase",
         {
             "account": company_code,
-            "order_number": 270,
-            "after_phase_name": "",
-            "delivery_date": "",
+            "order_number": order_number,
+            "after_phase_name": "引当待ち",
+            "delivery_date": convert_to_date(response),
             "delivery_date_update": 1,
         },
-        "lead_time_text",
+        "UpdStatus",
     )
-)
+    if update_response != "success":
+        raise ConnectionError("発送日の更新で失敗しました。")
