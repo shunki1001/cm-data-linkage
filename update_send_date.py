@@ -71,6 +71,7 @@ def convert_to_date(message):
         r"(\d+)月上旬",  # 例: '7月上旬'
         r"(\d+)～(\d+)日",  # 例: '3～5日より発送予定となります'
         r"(\d+)日以内",  # 例: '7日以内に発送予定となります'
+        r"(\d+)月初旬",  # 6月初旬より順次発送
     ]
 
     for pattern in patterns:
@@ -95,6 +96,9 @@ def convert_to_date(message):
             elif pattern == patterns[5]:  # (\d+)日以内に発送予定となります
                 days = int(match.group(1))
                 return (today + timedelta(days=days)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[6]:  # (\d+)月末～(\d+)月上旬
+                month = int(match.group(1))
+                return (date(today.year, month, 10)).strftime(format="%Y-%m-%d")
 
     return None
 
@@ -167,4 +171,7 @@ def main(args):
             "UpdStatus",
         )
         if update_response != "success":
-            raise ConnectionError("発送日の更新で失敗しました。")
+            raise ConnectionError(
+                f"発送日の更新で失敗しました。管理番号：{order_number}"
+            )
+        print(f"{order_number} was succeed.")
