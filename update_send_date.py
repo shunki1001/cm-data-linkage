@@ -69,9 +69,10 @@ def convert_to_date(message):
         r"(\d+)月末",  # 例: '6月末'
         r"(\d+)月末～(\d+)月上旬",  # 例: '6月末～7月上旬'
         r"(\d+)月上旬",  # 例: '7月上旬'
-        r"(\d+)～(\d+)日",  # 例: '3～5日より発送予定となります'
+        r"～(\d+)日",  # 例: '3～5日より発送予定となります'
         r"(\d+)日以内",  # 例: '7日以内に発送予定となります'
         r"(\d+)月初旬",  # 6月初旬より順次発送
+        r"(\d+)月下旬",  # 6月下旬より順次発送
     ]
 
     for pattern in patterns:
@@ -85,20 +86,24 @@ def convert_to_date(message):
                 return (date(today.year, month, 30)).strftime(format="%Y-%m-%d")
             elif pattern == patterns[2]:  # (\d+)月末～(\d+)月上旬
                 end_month = int(match.group(2))
-                return (date(today.year, month, 10)).strftime(format="%Y-%m-%d")
+                return (date(today.year, end_month, 10)).strftime(format="%Y-%m-%d")
             elif pattern == patterns[3]:  # (\d+)月上旬
                 month = int(match.group(1))
                 return (date(today.year, month, 10)).strftime(format="%Y-%m-%d")
             elif pattern == patterns[4]:  # (\d+)～(\d+)日より発送予定となります
-                start_day = int(match.group(1))
                 end_day = int(match.group(2))
                 return (today + timedelta(days=end_day)).strftime(format="%Y-%m-%d")
             elif pattern == patterns[5]:  # (\d+)日以内に発送予定となります
                 days = int(match.group(1))
                 return (today + timedelta(days=days)).strftime(format="%Y-%m-%d")
-            elif pattern == patterns[6]:  # (\d+)月末～(\d+)月上旬
+            elif pattern == patterns[6]:
                 month = int(match.group(1))
                 return (date(today.year, month, 10)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[7]:
+                month = int(match.group(1))
+                return (date(today.year, month, 30)).strftime(format="%Y-%m-%d")
+            # else:
+            #     return (today + timedelta(days=3)).strftime(format="%Y-%m-%d")
 
     return None
 
