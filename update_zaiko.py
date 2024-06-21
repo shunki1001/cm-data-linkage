@@ -109,7 +109,7 @@ def main(args):
             {"account": company_code, "item_code": item},
             "stock",
         )
-        zaiko_list.append({"item_code": item, "zaiko": zaiko})
+        zaiko_list.append({"cm_item_code": item, "zaiko": zaiko})
     print(zaiko_list)
 
     updated_df = pd.DataFrame(zaiko_list)
