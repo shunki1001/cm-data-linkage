@@ -7,9 +7,10 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 from datetime import date, timedelta
 
-import pandas
+import pandas as pd
 import requests
 from dotenv import load_dotenv
+from google.cloud import bigquery
 
 load_dotenv()
 
@@ -63,34 +64,22 @@ def request_crossmall(
         return response_list
 
 
-first_item_list = request_crossmall(
-    "get_item",
-    {"account": company_code, "condition": 1, "sort_type": 0},
-    "Result",
-    "item_code",
-)
-item_list = list(first_item_list)
+def main(args):
 
-if len(first_item_list) > 99:
-    temp_item_list = request_crossmall(
+    first_item_list = request_crossmall(
         "get_item",
-        {
-            "account": company_code,
-            "item_code": first_item_list[-1],
-            "condition": 1,
-            "sort_type": 0,
-        },
+        {"account": company_code, "condition": 1, "sort_type": 0},
         "Result",
         "item_code",
     )
-    item_list += temp_item_list
-    while len(temp_item_list) > 99:
-        time.sleep(0.5)
+    item_list = list(first_item_list)
+
+    if len(first_item_list) > 99:
         temp_item_list = request_crossmall(
             "get_item",
             {
                 "account": company_code,
-                "item_code": temp_item_list[-1],
+                "item_code": first_item_list[-1],
                 "condition": 1,
                 "sort_type": 0,
             },
@@ -98,13 +87,44 @@ if len(first_item_list) > 99:
             "item_code",
         )
         item_list += temp_item_list
-zaiko_list = []
-for item in item_list:
-    time.sleep(0.5)
-    zaiko = request_crossmall(
-        "get_stock",
-        {"account": company_code, "item_code": item},
-        "stock",
-    )
-    zaiko_list.append({"item_code": item, "zaiko": zaiko})
-print(zaiko_list)
+        while len(temp_item_list) > 99:
+            time.sleep(0.5)
+            temp_item_list = request_crossmall(
+                "get_item",
+                {
+                    "account": company_code,
+                    "item_code": temp_item_list[-1],
+                    "condition": 1,
+                    "sort_type": 0,
+                },
+                "Result",
+                "item_code",
+            )
+            item_list += temp_item_list
+    zaiko_list = []
+    for item in item_list:
+        time.sleep(0.5)
+        zaiko = request_crossmall(
+            "get_stock",
+            {"account": company_code, "item_code": item},
+            "stock",
+        )
+        zaiko_list.append({"item_code": item, "zaiko": zaiko})
+    print(zaiko_list)
+
+    updated_df = pd.DataFrame(zaiko_list)
+
+    updated_df["partition_date"] = today
+    bq_client = bigquery.Client(project="doctor-ilcsi")
+    bigquery_job = bq_client.load_table_from_dataframe(
+        updated_df,
+        "doctor-ilcsi.dl_crossmall.zaiko",
+        job_config=bigquery.LoadJobConfig(
+            write_disposition="WRITE_APPEND",
+            time_partitioning=bigquery.TimePartitioning(
+                type_=bigquery.TimePartitioningType.DAY, field="partition_date"
+            ),
+        ),
+    ).result()
+
+    return "200"
