@@ -73,6 +73,7 @@ def convert_to_date(message):
         r"(\d+)日以内",  # 例: '7日以内に発送予定となります'
         r"(\d+)月初旬",  # 6月初旬より順次発送
         r"(\d+)月下旬",  # 6月下旬より順次発送
+        r"(\d+)月上順",  # 6月上順
     ]
 
     for pattern in patterns:
@@ -102,6 +103,9 @@ def convert_to_date(message):
             elif pattern == patterns[7]:
                 month = int(match.group(1))
                 return (date(today.year, month, 30)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[8]:
+                month = int(match.group(1))
+                return (date(today.year, month, 10)).strftime(format="%Y-%m-%d")
             # else:
             #     return (today + timedelta(days=3)).strftime(format="%Y-%m-%d")
 
@@ -112,10 +116,7 @@ def main(args):
     # 引当待ちフェーズ、かつ、Mark1がチェックされている商品の一覧を取得
     first_order_list = request_crossmall(
         "get_order",
-        {
-            "account": company_code,
-            "phase_name": "注文確認",
-        },
+        {"account": company_code, "phase_name": "引当待ち", "check_mark3": 0},
         "Result",
         "order_number",
     )
@@ -128,7 +129,8 @@ def main(args):
                 "account": company_code,
                 "order_number": first_order_list[-1],
                 "condition": 1,
-                "phase_name": "注文確認",
+                "phase_name": "引当待ち",
+                "check_mark3": 0,
             },
             "Result",
             "order_number",
@@ -142,7 +144,8 @@ def main(args):
                     "account": company_code,
                     "order_number": order_list[-1],
                     "condition": 1,
-                    "phase_name": "注文確認",
+                    "phase_name": "引当待ち",
+                    "check_mark3": 0,
                 },
                 "Result",
                 "order_number",
@@ -150,10 +153,10 @@ def main(args):
             order_number_list += order_list
 
     # すべてのorderに関して、
-    # 商品詳細情報を取得
     lead_time_text_list = []
     for order_number in order_number_list:
         time.sleep(0.5)
+        # 商品詳細情報を取得
         response = request_crossmall(
             "get_order_detail",
             {
@@ -179,4 +182,17 @@ def main(args):
             raise ConnectionError(
                 f"発送日の更新で失敗しました。管理番号：{order_number}"
             )
+        # Mark3をつける
+        update_response = request_crossmall(
+            "upd_order_check_mark",
+            {
+                "account": company_code,
+                "order_number": order_number,
+                "check_mark_type": 3,
+                "check_mark_value": 1,
+            },
+            "UpdStatus",
+        )
         print(f"{order_number} was succeed.")
+
+    return "200"
