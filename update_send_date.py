@@ -74,6 +74,12 @@ def convert_to_date(message):
         r"(\d+)月初旬",  # 6月初旬より順次発送
         r"(\d+)月下旬",  # 6月下旬より順次発送
         r"(\d+)月上順",  # 6月上順
+        r"(\d+)月上～中旬",  # 7月上～中旬
+        r"(\d+)月中～下旬",  #
+        r"(\d+)月下～上旬",  #
+        r"(\d+)月上旬～(\d+)月中旬",  # 例:
+        r"(\d+)月中旬～(\d+)月下旬",  # 例:
+        r"(\d+)月下旬～(\d+)月上旬",  # 例:
     ]
 
     for pattern in patterns:
@@ -92,7 +98,7 @@ def convert_to_date(message):
                 month = int(match.group(1))
                 return (date(today.year, month, 10)).strftime(format="%Y-%m-%d")
             elif pattern == patterns[4]:  # (\d+)～(\d+)日より発送予定となります
-                end_day = int(match.group(2))
+                end_day = int(match.group(1))
                 return (today + timedelta(days=end_day)).strftime(format="%Y-%m-%d")
             elif pattern == patterns[5]:  # (\d+)日以内に発送予定となります
                 days = int(match.group(1))
@@ -105,6 +111,24 @@ def convert_to_date(message):
                 return (date(today.year, month, 30)).strftime(format="%Y-%m-%d")
             elif pattern == patterns[8]:
                 month = int(match.group(1))
+                return (date(today.year, month, 10)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[9]:
+                month = int(match.group(1))
+                return (date(today.year, month, 20)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[10]:
+                month = int(match.group(1))
+                return (date(today.year, month, 30)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[11]:
+                month = int(match.group(1))
+                return (date(today.year, month, 10)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[12]:
+                month = int(match.group(2))
+                return (date(today.year, month, 30)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[13]:
+                month = int(match.group(2))
+                return (date(today.year, month, 20)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[14]:
+                month = int(match.group(2))
                 return (date(today.year, month, 10)).strftime(format="%Y-%m-%d")
             # else:
             #     return (today + timedelta(days=3)).strftime(format="%Y-%m-%d")
