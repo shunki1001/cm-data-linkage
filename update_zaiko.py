@@ -173,6 +173,7 @@ def main(args):
         zaiko[0].update({"cm_item_sku_code": row["item_sku_code"]})
         zaiko_list.append(zaiko[0])
     updated_df = pd.DataFrame(zaiko_list)
+    updated_df = updated_df.astype(str)
     updated_df["partition_date"] = today
 
     # BQに連携
