@@ -80,6 +80,8 @@ def convert_to_date(message):
         r"(\d+)月上旬～(\d+)月中旬",  # 例:
         r"(\d+)月中旬～(\d+)月下旬",  # 例:
         r"(\d+)月下旬～(\d+)月上旬",  # 例:
+        r"(\d+)月中順",  # 6月上順
+        r"(\d+)月下順",  # 6月上順
     ]
 
     for pattern in patterns:
@@ -130,8 +132,14 @@ def convert_to_date(message):
             elif pattern == patterns[14]:
                 month = int(match.group(2))
                 return (date(today.year, month, 10)).strftime(format="%Y-%m-%d")
-            # else:
-            #     return (today + timedelta(days=3)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[15]:
+                month = int(match.group(1))
+                return (date(today.year, month, 20)).strftime(format="%Y-%m-%d")
+            elif pattern == patterns[16]:
+                month = int(match.group(1))
+                return (date(today.year, month, 30)).strftime(format="%Y-%m-%d")
+        else:
+            return (today + timedelta(days=7)).strftime(format="%Y-%m-%d")
 
     return None
 
