@@ -1,64 +1,20 @@
 # %%
-import hashlib
 import os
 import re
 import time
-import urllib.parse
-import xml.etree.ElementTree as ET
 from datetime import date, timedelta
 
-import pandas
+import pandas as pd
 import requests
 from dotenv import load_dotenv
 
+from request_crossmall import request_crossmall
+
 load_dotenv()
 
-endpoint = "https://crossmall.jp/"
-secret_key = os.environ["SECRET_KEY"]
 company_code = os.environ["COMPANY_CODE"]
 
 today = date.today()
-
-
-def request_crossmall(
-    path: str, params: dict, response_root: str, item_root="None"
-) -> str:
-    # URLをエンコード
-    encoded_params = urllib.parse.urlencode(params)
-
-    # 署名の生成
-    def generate_md5_hash(input_string):
-        # ハッシュオブジェクトを作成
-        md5_hash = hashlib.md5()
-        # 入力文字列をバイト型にエンコードしてハッシュオブジェクトに渡す
-        md5_hash.update(input_string.encode("utf-8"))
-        # ハッシュ値を16進数の文字列で取得
-        return md5_hash.hexdigest()
-
-    signing_string = encoded_params + secret_key
-    signing = generate_md5_hash(signing_string)
-
-    url = f"{endpoint}webapi2/{path}?{encoded_params}&signing={signing}"
-    try:
-        response = requests.get(url=url)
-    except:
-        raise ConnectionError(f"CrossmallのAPIでエラー発生。params: {params}")
-
-    root = ET.fromstring(response.text)
-
-    if item_root == "None":
-        # stock値を取得
-        stock_value = root.find(f".//{response_root}")
-        if stock_value is not None:
-            return stock_value.text
-        else:
-            return f"{response_root}要素が見つかりませんでした"
-    else:
-        response_list = []
-        for item in root.findall(f".//{response_root}"):
-            name = item.find(item_root).text
-            response_list.append(name)
-        return response_list
 
 
 # 日付部分を標準的な形式に変換する関数
@@ -144,8 +100,8 @@ def convert_to_date(message):
     return None
 
 
-def main(args):
-    # 引当待ちフェーズ、かつ、Mark1がチェックされている商品の一覧を取得
+def update_send_date():
+    # 引当待ちフェーズ、かつ、Mark3がチェックされていない商品の一覧を取得
     first_order_list = request_crossmall(
         "get_order",
         {"account": company_code, "phase_name": "引当待ち", "check_mark3": 0},
@@ -195,6 +151,7 @@ def main(args):
                 "account": company_code,
                 "order_number": order_number,
             },
+            "Result",
             "lead_time_text",
         )
         lead_time_text_list.append(response)
@@ -208,6 +165,7 @@ def main(args):
                 "delivery_date": convert_to_date(response),
                 "delivery_date_update": 1,
             },
+            "Result",
             "UpdStatus",
         )
         if update_response != "success":
@@ -223,8 +181,139 @@ def main(args):
                 "check_mark_type": 3,
                 "check_mark_value": 1,
             },
+            "Result",
             "UpdStatus",
         )
         print(f"{order_number} was succeed.")
 
+    return "200"
+
+
+def update_send_phase():
+    # 発送待ちフェーズ、かつ、Mark2がチェックされていない商品の一覧を取得
+    first_order_list = request_crossmall(
+        "get_order",
+        {"account": company_code, "phase_name": "発送待ち", "check_mark2": 0},
+        "Result",
+        [
+            "order_number",
+            "ship_zip",
+            "ship_address1",
+            "ship_address2",
+            "order_memo",
+            "order_option3",
+        ],
+    )
+    order_number_list = list(first_order_list)
+
+    if len(first_order_list) > 99:
+        order_list = request_crossmall(
+            "get_order",
+            {
+                "account": company_code,
+                "phase_name": "発送待ち",
+                "order_number": first_order_list[-1],
+                "check_mark2": 0,
+            },
+            "Result",
+            [
+                "order_number",
+                "ship_zip",
+                "ship_address1",
+                "ship_address2",
+                "order_memo",
+                "order_option3",
+            ],
+        )
+        order_number_list += order_list
+        while len(order_list) > 99:
+            time.sleep(0.5)
+            order_list = request_crossmall(
+                "get_order",
+                {
+                    "account": company_code,
+                    "phase_name": "発送待ち",
+                    "order_number": order_list[-1],
+                    "check_mark2": 0,
+                },
+                "Result",
+                [
+                    "order_number",
+                    "ship_zip",
+                    "ship_address1",
+                    "ship_address2",
+                    "order_memo",
+                    "order_option3",
+                ],
+            )
+            order_number_list += order_list
+    # すべてのorderに関して、
+    for order in order_number_list:
+        phased_flag = True
+        time.sleep(0.5)
+        # 郵便番号と住所が一致しているかチェック
+        zip_request = requests.get(
+            url=f'https://zipcloud.ibsnet.co.jp/api/search?zipcode={order["ship_zip"]}'
+        )
+        zip_response = zip_request.json()["results"]
+        addresses = [
+            f"{entry['address1']}{entry['address2']}" for entry in zip_response
+        ]
+        for address in addresses:
+            order_address = f'{order["ship_address1"]}{order["ship_address2"]}'
+            check_address = []
+            if address in order_address:
+                check_address.append(True)
+            else:
+                check_address.append(False)
+        if False in check_address:
+            phased_flag = False
+        # 離島フラグがあるかチェック
+        if order["order_option3"] != "離島フラグ無":
+            phased_flag = False
+        # 備考に何か入力されているかチェック
+        if order["order_memo"]:
+            phased_flag = False
+
+        # 特に問題なければ、フェーズを移動する。その後、チェックしたことが分かるように、Mark2にチェックを入れる
+        if phased_flag:
+            # 発送日に転記
+            update_response = request_crossmall(
+                "upd_order_phase",
+                {
+                    "account": company_code,
+                    "order_number": order["order_number"],
+                    "after_phase_name": "RSL出荷登録待ち",
+                    # "delivery_date_update": 1,
+                },
+                "ResultStatus",
+                ["UpdStatus"],
+            )
+        if update_response != "success":
+            raise ConnectionError(
+                f"発送日の更新で失敗しました。管理番号：{order['order_number']}"
+            )
+        # Mark2をつける
+        update_mark_response = request_crossmall(
+            "upd_order_check_mark",
+            {
+                "account": company_code,
+                "order_number": order["order_number"],
+                "check_mark_type": 2,
+                "check_mark_value": 1,
+            },
+            "ResultStatus",
+            ["UpdStatus"],
+        )
+    return "200"
+
+
+def main(args):
+    print("発送日の転記開始")
+    print(update_send_date())
+    print("発送日の転記完了")
+
+    print("RSLへの自動出荷連携処理開始")
+    print(update_send_phase())
+    print("RSLへの自動出荷連携処理完了")
     return "200"
