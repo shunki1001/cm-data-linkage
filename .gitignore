@@ -3,3 +3,7 @@ env
 
 csv
 *.csv
+
+# ブラウザ関係
+headless_chromium
+chromedriver

@@ -1,0 +1,21 @@
+# selenium の設定
+
+```linux:
+# HOMEフォルダにプロジェクト用のフォルダ「prj」を作成
+mkdir prj
+# スクレイピング用のパッケージをダウンロード
+git clone https://github.com/ryfeus/gcf-packs.git
+# ダウンロードしたパッケージのソースフォルダに移動
+cd gcf-packs/selenium_chrome/source
+# WEBブラウザがZIP圧縮されているので解凍
+unzip headless-chromium.zip
+
+# 「Selenium」、「Webブラウザ」、「Webドライバ」をプロジェクト用フォルダにコピー
+cp chromedriver $HOME/prj
+cp headless-chromium $HOME/prj
+cp selenium $HOME/prj -r
+```
+
+# requirements.txt
+
+slenium は上記でダウンロードしてるので、requirements.txt には記載しない
