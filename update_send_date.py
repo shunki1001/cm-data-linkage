@@ -1,8 +1,8 @@
 # %%
 import os
 import re
-import time
-from datetime import date, timedelta
+import time as pytime
+from datetime import date, datetime, time, timedelta
 
 import pandas as pd
 import requests
@@ -106,44 +106,43 @@ def update_send_date():
         "get_order",
         {"account": company_code, "phase_name": "引当待ち", "check_mark3": 0},
         "Result",
-        "order_number",
+        ["order_number"],
     )
-    order_number_list = list(first_order_list)
+    order_number_list = [order["order_number"] for order in first_order_list]
 
     if len(first_order_list) > 99:
         order_list = request_crossmall(
             "get_order",
             {
                 "account": company_code,
-                "order_number": first_order_list[-1],
+                "order_number": first_order_list[-1]["order_number"],
                 "condition": 1,
                 "phase_name": "引当待ち",
                 "check_mark3": 0,
             },
             "Result",
-            "order_number",
+            ["order_number"],
         )
-        order_number_list += order_list
+        order_number_list += [order["order_number"] for order in order_list]
         while len(order_list) > 99:
-            time.sleep(0.5)
+            pytime.sleep(0.5)
             order_list = request_crossmall(
                 "get_order",
                 {
                     "account": company_code,
-                    "order_number": order_list[-1],
+                    "order_number": order_list[-1]["order_number"],
                     "condition": 1,
                     "phase_name": "引当待ち",
                     "check_mark3": 0,
                 },
                 "Result",
-                "order_number",
+                ["order_number"],
             )
-            order_number_list += order_list
+            order_number_list += [order["order_number"] for order in order_list]
 
     # すべてのorderに関して、
-    lead_time_text_list = []
     for order_number in order_number_list:
-        time.sleep(0.5)
+        pytime.sleep(0.5)
         # 商品詳細情報を取得
         response = request_crossmall(
             "get_order_detail",
@@ -152,9 +151,8 @@ def update_send_date():
                 "order_number": order_number,
             },
             "Result",
-            "lead_time_text",
+            ["lead_time_text"],
         )
-        lead_time_text_list.append(response)
         # 発送日に転記
         update_response = request_crossmall(
             "upd_order_phase",
@@ -162,13 +160,13 @@ def update_send_date():
                 "account": company_code,
                 "order_number": order_number,
                 "after_phase_name": "引当待ち",
-                "delivery_date": convert_to_date(response),
+                "delivery_date": convert_to_date(response[0]["lead_time_text"]),
                 "delivery_date_update": 1,
             },
-            "Result",
-            "UpdStatus",
+            "ResultStatus",
+            ["UpdStatus"],
         )
-        if update_response != "success":
+        if update_response[0]["UpdStatus"] != "success":
             raise ConnectionError(
                 f"発送日の更新で失敗しました。管理番号：{order_number}"
             )
@@ -181,8 +179,8 @@ def update_send_date():
                 "check_mark_type": 3,
                 "check_mark_value": 1,
             },
-            "Result",
-            "UpdStatus",
+            "ResultStatus",
+            ["UpdStatus"],
         )
         print(f"{order_number} was succeed.")
 
@@ -204,7 +202,7 @@ def update_send_phase():
             "order_option3",
         ],
     )
-    order_number_list = list(first_order_list)
+    orders = list(first_order_list)
 
     if len(first_order_list) > 99:
         order_list = request_crossmall(
@@ -212,7 +210,7 @@ def update_send_phase():
             {
                 "account": company_code,
                 "phase_name": "発送待ち",
-                "order_number": first_order_list[-1],
+                "order_number": first_order_list[-1]["order_number"],
                 "check_mark2": 0,
             },
             "Result",
@@ -225,15 +223,15 @@ def update_send_phase():
                 "order_option3",
             ],
         )
-        order_number_list += order_list
+        orders += order_list
         while len(order_list) > 99:
-            time.sleep(0.5)
+            pytime.sleep(0.5)
             order_list = request_crossmall(
                 "get_order",
                 {
                     "account": company_code,
                     "phase_name": "発送待ち",
-                    "order_number": order_list[-1],
+                    "order_number": order_list[-1]["order_number"],
                     "check_mark2": 0,
                 },
                 "Result",
@@ -246,11 +244,11 @@ def update_send_phase():
                     "order_option3",
                 ],
             )
-            order_number_list += order_list
+            orders += order_list
     # すべてのorderに関して、
-    for order in order_number_list:
+    for order in orders:
         phased_flag = True
-        time.sleep(0.5)
+        pytime.sleep(0.5)
         # 郵便番号と住所が一致しているかチェック
         zip_request = requests.get(
             url=f'https://zipcloud.ibsnet.co.jp/api/search?zipcode={order["ship_zip"]}'
@@ -278,21 +276,43 @@ def update_send_phase():
         # 特に問題なければ、フェーズを移動する。その後、チェックしたことが分かるように、Mark2にチェックを入れる
         if phased_flag:
             # 発送日に転記
-            update_response = request_crossmall(
-                "upd_order_phase",
-                {
-                    "account": company_code,
-                    "order_number": order["order_number"],
-                    "after_phase_name": "RSL出荷登録待ち",
-                    # "delivery_date_update": 1,
-                },
-                "ResultStatus",
-                ["UpdStatus"],
-            )
-        if update_response != "success":
-            raise ConnectionError(
-                f"発送日の更新で失敗しました。管理番号：{order['order_number']}"
-            )
+            # 現在時刻で場合分け
+            if datetime.now() < datetime.combine(today, time(15, 0)):
+                update_response = request_crossmall(
+                    "upd_order_phase",
+                    {
+                        "account": company_code,
+                        "order_number": order["order_number"],
+                        "after_phase_name": "RSL出荷登録待ち",
+                        "delivery_date": today.strftime(format="%Y-%m-%d"),
+                        "delivery_date_update": 1,
+                    },
+                    "ResultStatus",
+                    ["UpdStatus"],
+                )
+                if update_response[0]["UpdStatus"] != "success":
+                    raise ConnectionError(
+                        f"発送日の更新で失敗しました。管理番号：{order['order_number']}"
+                    )
+            elif datetime.now() >= datetime.combine(today, time(15, 0)):
+                update_response = request_crossmall(
+                    "upd_order_phase",
+                    {
+                        "account": company_code,
+                        "order_number": order["order_number"],
+                        "after_phase_name": "RSL出荷登録待ち",
+                        "delivery_date_update": 1,
+                        "delivery_date": (today + timedelta(days=1)).strftime(
+                            format="%Y-%m-%d"
+                        ),
+                    },
+                    "ResultStatus",
+                    ["UpdStatus"],
+                )
+                if update_response[0]["UpdStatus"] != "success":
+                    raise ConnectionError(
+                        f"発送日の更新で失敗しました。管理番号：{order['order_number']}"
+                    )
         # Mark2をつける
         update_mark_response = request_crossmall(
             "upd_order_check_mark",
@@ -305,6 +325,7 @@ def update_send_phase():
             "ResultStatus",
             ["UpdStatus"],
         )
+        print(f'{order["order_number"]}')
     return "200"
 
 
