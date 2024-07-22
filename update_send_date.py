@@ -161,7 +161,7 @@ def update_send_date():
                 "order_number": order_number,
                 "after_phase_name": "引当待ち",
                 "delivery_date": convert_to_date(response[0]["lead_time_text"]),
-                "delivery_date_update": 1,
+                "delivery_date_update": 0,
             },
             "ResultStatus",
             ["UpdStatus"],
@@ -254,17 +254,20 @@ def update_send_phase():
             url=f'https://zipcloud.ibsnet.co.jp/api/search?zipcode={order["ship_zip"]}'
         )
         zip_response = zip_request.json()["results"]
-        addresses = [
-            f"{entry['address1']}{entry['address2']}" for entry in zip_response
-        ]
-        for address in addresses:
-            order_address = f'{order["ship_address1"]}{order["ship_address2"]}'
-            check_address = []
-            if address in order_address:
-                check_address.append(True)
-            else:
-                check_address.append(False)
-        if False in check_address:
+        try:
+            addresses = [
+                f"{entry['address1']}{entry['address2']}" for entry in zip_response
+            ]
+            for address in addresses:
+                order_address = f'{order["ship_address1"]}{order["ship_address2"]}'
+                check_address = []
+                if address in order_address:
+                    check_address.append(True)
+                else:
+                    check_address.append(False)
+            if False in check_address:
+                phased_flag = False
+        except:
             phased_flag = False
         # 離島フラグがあるかチェック
         if order["order_option3"] != "離島フラグ無":
