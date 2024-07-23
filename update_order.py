@@ -24,11 +24,11 @@ def main(args):
         "get_order",
         {
             "account": company_code,
-            "order_date_fr": (today - timedelta(days=1)).strftime(format="%Y-%m-%d"),
-            "order_date_to": (today - timedelta(days=1)).strftime(format="%Y-%m-%d"),
+            "updated_at_fr": (today - timedelta(days=1)).strftime(format="%Y-%m-%d"),
+            "updated_at_to": today.strftime(format="%Y-%m-%d"),
         },
         "Result",
-        ["order_number", "order_date"],
+        ["order_number", "order_date", "phase_name", "updated_at"],
     )
     # APIの取得上限が100件
     if len(first_order_list) > 99:
@@ -36,17 +36,15 @@ def main(args):
             "get_order",
             {
                 "account": company_code,
-                "order_date_fr": (today - timedelta(days=1)).strftime(
+                "updated_at_fr": (today - timedelta(days=1)).strftime(
                     format="%Y-%m-%d"
                 ),
-                "order_date_to": (today - timedelta(days=1)).strftime(
-                    format="%Y-%m-%d"
-                ),
+                "updated_at_to": today.strftime(format="%Y-%m-%d"),
                 "condition": 1,
                 "order_number": first_order_list[-1]["order_number"],
             },
             "Result",
-            ["order_number", "order_date"],
+            ["order_number", "order_date", "phase_name", "updated_at"],
         )
         first_order_list += temp_order_list
         while len(temp_order_list) > 99:
@@ -55,17 +53,15 @@ def main(args):
                 "get_order",
                 {
                     "account": company_code,
-                    "order_date_fr": (today - timedelta(days=1)).strftime(
+                    "updated_at_fr": (today - timedelta(days=1)).strftime(
                         format="%Y-%m-%d"
                     ),
-                    "order_date_to": (today - timedelta(days=1)).strftime(
-                        format="%Y-%m-%d"
-                    ),
+                    "updated_at_to": today.strftime(format="%Y-%m-%d"),
                     "condition": 1,
                     "order_number": temp_order_list[-1]["order_number"],
                 },
                 "Result",
-                ["order_number", "order_date"],
+                ["order_number", "order_date", "phase_name", "updated_at"],
             )
             first_order_list += temp_order_list
     # 注文詳細を取得
@@ -90,12 +86,15 @@ def main(args):
             ],
         )
         order_detail[0]["order_at"] = item["order_date"]
+        order_detail[0]["updated_at"] = item["updated_at"]
+        order_detail[0]["phase_name"] = item["phase_name"]
         order_detail_list.append(order_detail[0])
     # Dataframeに変換＋前処理
     df_order = pd.DataFrame(order_detail_list)
     df_order = df_order.astype(str)
     df_order["partition_date"] = today
     df_order["order_at"] = pd.to_datetime(df_order["order_at"])
+    df_order["updated_at"] = pd.to_datetime(df_order["updated_at"])
     # BQに連携
     bigquery_job = bq_client.load_table_from_dataframe(
         df_order,
