@@ -74,8 +74,8 @@ def main(args):
     button2 = driver.find_element(By.ID, "inv_flg")
     button2.click()
 
-    button3 = driver.find_element(By.ID, "upd_stock_flg")
-    button3.click()
+    # button3 = driver.find_element(By.ID, "upd_stock_flg")
+    # button3.click()
 
     button4 = driver.find_element(By.ID, "button-1135-btnIconEl")
     button4.click()

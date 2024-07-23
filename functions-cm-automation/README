@@ -19,3 +19,6 @@ cp selenium $HOME/prj -r
 # requirements.txt
 
 slenium は上記でダウンロードしてるので、requirements.txt には記載しない
+
+GCPのターミナルからデプロイ（必要なファイルが保存されている）
+gcloud functions deploy selenium_function   --runtime python39   --trigger-http   --entry-point main   --source=. --gen2 --region=asia-northeast1
