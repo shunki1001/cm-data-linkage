@@ -154,22 +154,26 @@ def update_send_date():
             ["lead_time_text"],
         )
         # 発送日に転記
-        update_response = request_crossmall(
-            "upd_order_phase",
-            {
-                "account": company_code,
-                "order_number": order_number,
-                "after_phase_name": "引当待ち",
-                "delivery_date": convert_to_date(response[0]["lead_time_text"]),
-                "delivery_date_update": 0,
-            },
-            "ResultStatus",
-            ["UpdStatus"],
-        )
-        if update_response[0]["UpdStatus"] != "success":
-            raise ConnectionError(
-                f"発送日の更新で失敗しました。管理番号：{order_number}"
+        try:
+            update_response = request_crossmall(
+                "upd_order_phase",
+                {
+                    "account": company_code,
+                    "order_number": order_number,
+                    "after_phase_name": "引当待ち",
+                    "delivery_date": convert_to_date(response[0]["lead_time_text"]),
+                    "delivery_date_update": 0,
+                },
+                "ResultStatus",
+                ["UpdStatus"],
             )
+            if update_response[0]["UpdStatus"] != "success":
+                raise ConnectionError(
+                    f"発送日の更新で失敗しました。管理番号：{order_number}"
+                )
+        except:
+            print(f"発送日情報がない注文です。{order_number}")
+
         # Mark3をつける
         update_response = request_crossmall(
             "upd_order_check_mark",
@@ -270,7 +274,7 @@ def update_send_phase():
         except:
             phased_flag = False
         # 離島フラグがあるかチェック
-        if order["order_option3"] != "離島フラグ無":
+        if order["order_option3"] == "離島フラグ有":
             phased_flag = False
         # 備考に何か入力されているかチェック
         if order["order_memo"]:
