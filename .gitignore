@@ -5,6 +5,6 @@ csv
 *.csv
 
 # ブラウザ関係
-headless_chromium
+headless-chromium
 chromedriver
 selenium
