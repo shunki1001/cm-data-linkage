@@ -67,7 +67,7 @@ def main(args):
     # 注文詳細を取得
     order_detail_list = []
     for item in first_order_list:
-        order_detail = request_crossmall(
+        order_details = request_crossmall(
             "get_order_detail",
             {"account": company_code, "order_number": item["order_number"]},
             "Result",
@@ -85,10 +85,12 @@ def main(args):
                 "jan_cd",
             ],
         )
-        order_detail[0]["order_at"] = item["order_date"]
-        order_detail[0]["updated_at"] = item["updated_at"]
-        order_detail[0]["phase_name"] = item["phase_name"]
-        order_detail_list.append(order_detail[0])
+        for order_detail in order_details:
+            order_detail["order_at"] = item["order_date"]
+            order_detail["updated_at"] = item["updated_at"]
+            order_detail["phase_name"] = item["phase_name"]
+            print(order_detail)
+            order_detail_list.append(order_detail)
     # Dataframeに変換＋前処理
     df_order = pd.DataFrame(order_detail_list)
     df_order = df_order.astype(str)

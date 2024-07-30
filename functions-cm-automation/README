@@ -11,9 +11,9 @@ cd gcf-packs/selenium_chrome/source
 unzip headless-chromium.zip
 
 # 「Selenium」、「Webブラウザ」、「Webドライバ」をプロジェクト用フォルダにコピー
-cp chromedriver $HOME/prj
-cp headless-chromium $HOME/prj
-cp selenium $HOME/prj -r
+cp chromedriver $HOME/cm-data-linkage/functions-cm-automation
+cp headless-chromium $HOME/cm-data-linkage/functions-cm-automation
+cp selenium $HOME/cm-data-linkage/functions-cm-automation -r
 ```
 
 # requirements.txt
