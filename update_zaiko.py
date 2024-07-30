@@ -103,21 +103,24 @@ def main(args):
     # 2. 在庫情報を取得
     zaiko_list = []
     for index, row in df_zaiko_request_filtered.iterrows():
-        zaiko = request_crossmall(
-            "get_stock",
-            {"account": company_code, "sku_code": row["item_sku_code"]},
-            "Result",
-            [
-                "item_cd",
-                "attribute1_code",
-                "attribute1_name",
-                "attribute2_code",
-                "attribute2_name",
-                "stock",
-            ],
-        )
-        zaiko[0].update({"cm_item_sku_code": row["item_sku_code"]})
-        zaiko_list.append(zaiko[0])
+        try:
+            zaiko = request_crossmall(
+                "get_stock",
+                {"account": company_code, "sku_code": row["item_sku_code"]},
+                "Result",
+                [
+                    "item_cd",
+                    "attribute1_code",
+                    "attribute1_name",
+                    "attribute2_code",
+                    "attribute2_name",
+                    "stock",
+                ],
+            )
+            zaiko[0].update({"cm_item_sku_code": row["item_sku_code"]})
+            zaiko_list.append(zaiko[0])
+        except:
+            print(row)
     updated_df = pd.DataFrame(zaiko_list)
     updated_df = updated_df.astype(str)
     updated_df["partition_date"] = today
