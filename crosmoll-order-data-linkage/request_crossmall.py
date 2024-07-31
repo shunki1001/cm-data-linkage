@@ -3,8 +3,9 @@ import hashlib
 import os
 import urllib.parse
 import xml.etree.ElementTree as ET
-from datetime import date
+from datetime import date, datetime
 
+import pytz
 import requests
 from dotenv import load_dotenv
 
@@ -14,7 +15,13 @@ endpoint = "https://crossmall.jp/"
 secret_key = os.environ["SECRET_KEY"]
 company_code = os.environ["COMPANY_CODE"]
 
-today = date.today()
+tokyo_tz = pytz.timezone("Asia/Tokyo")
+
+# 現在のTokyoの日付と時刻を取得
+tokyo_now = datetime.now(tokyo_tz)
+
+# 日付部分だけを取得
+today = tokyo_now.date()
 
 
 def request_crossmall(

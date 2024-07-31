@@ -1,8 +1,11 @@
 env
 .env
+.env.yaml
 
 csv
 *.csv
+
+__pycache__
 
 # ブラウザ関係
 headless-chromium

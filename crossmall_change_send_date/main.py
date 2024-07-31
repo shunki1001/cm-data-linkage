@@ -7,7 +7,6 @@ from datetime import date, datetime, time, timedelta
 import pandas as pd
 import requests
 from dotenv import load_dotenv
-
 from request_crossmall import request_crossmall
 
 load_dotenv()

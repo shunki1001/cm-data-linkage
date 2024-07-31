@@ -1,19 +1,25 @@
 # %%
 import os
 import time
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
+import pytz
 from dotenv import load_dotenv
 from google.cloud import bigquery
-
 from request_crossmall import request_crossmall
 
 load_dotenv()
 
 company_code = os.environ["COMPANY_CODE"]
 
-today = date.today()
+tokyo_tz = pytz.timezone("Asia/Tokyo")
+
+# 現在のTokyoの日付と時刻を取得
+tokyo_now = datetime.now(tokyo_tz)
+
+# 日付部分だけを取得
+today = tokyo_now.date()
 
 bq_client = bigquery.Client(project="doctor-ilcsi")
 

@@ -6,7 +6,6 @@ from datetime import date, timedelta
 import pandas as pd
 from dotenv import load_dotenv
 from google.cloud import bigquery
-
 from request_crossmall import request_crossmall
 
 load_dotenv()

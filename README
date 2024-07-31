@@ -1,0 +1,15 @@
+## crosmoll-order-data-linkage
+
+gcloud functions deploy crosmoll-order-data-linkage --gen2 --runtime=python311 --region=asia-northeast1 --source=. --entry-point=main --trigger-http
+
+## crossmall-data-linkage
+
+gcloud functions deploy crossmall-data-linkage --gen2 --runtime=python311 --region=asia-northeast1 --source=. --entry-point=main --trigger-http
+
+## crossmall_change_send_date
+
+gcloud functions deploy crossmall_change_send_date --gen2 --runtime=python311 --region=asia-northeast1 --source=. --entry-point=main --trigger-http
+
+## selenium_function
+
+gcloud functions deploy selenium_function   --runtime python39   --trigger-http   --entry-point main   --source=. --gen2 --region=asia-northeast1 --env-vars-file=.env.yaml

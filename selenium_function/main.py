@@ -2,10 +2,12 @@ import os
 import shutil
 import stat
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
+import pytz
+from dotenv import load_dotenv
 from google.cloud import bigquery
 
 # ChromeのWebDriverライブラリをインポート
@@ -14,6 +16,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
+
+load_dotenv(".env.yaml")
 
 
 def main(args):
@@ -56,8 +60,8 @@ def main(args):
     password = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.XPATH, "//form/p[2]/input"))
     )
-    username.send_keys("tajimura0505@gmail.com")  # ユーザ名を入力
-    password.send_keys("Organicorganic11")  # パスワードを入力
+    username.send_keys(os.envirion["USERNAME"])  # ユーザ名を入力
+    password.send_keys(os.environ["PASS"])  # パスワードを入力
     driver.find_element(
         By.NAME, "commit"
     ).click()  # ログインボタンをクリック（name属性が'login'の場合）
@@ -95,7 +99,13 @@ def main(args):
 
 def update_rsl():
 
-    today = date.today()
+    tokyo_tz = pytz.timezone("Asia/Tokyo")
+
+    # 現在のTokyoの日付と時刻を取得
+    tokyo_now = datetime.now(tokyo_tz)
+
+    # 日付部分だけを取得
+    today = tokyo_now.date()
 
     driver.get("https://www.crossmall.jp/rfc_stocks/?mId=&umId=0")
 
