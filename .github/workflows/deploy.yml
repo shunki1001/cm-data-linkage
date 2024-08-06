@@ -1,0 +1,63 @@
+# name: Deploy Cloud Functions
+
+# on:
+#   push:
+#     branches:
+#       - main
+
+# jobs:
+#   detect-changes:
+#     runs-on: ubuntu-latest
+#     outputs:
+#       changed-functions: ${{ steps.detect.outputs.changed-functions }}
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v2
+
+#       - name: Detect changed functions
+#         id: detect
+#         run: |
+#           echo "Detecting changed functions..."
+#           CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+#           echo "Changed files: $CHANGED_FILES"
+
+#           FUNCTIONS=()
+#           for FILE in $CHANGED_FILES; do
+#             if [[ $FILE == function* ]]; then
+#               FUNCTION_DIR=$(echo $FILE | cut -d'/' -f1)
+#               if [[ ! " ${FUNCTIONS[@]} " =~ " ${FUNCTION_DIR} " ]]; then
+#                 FUNCTIONS+=(${FUNCTION_DIR})
+#               fi
+#             fi
+#           done
+
+#           if [ ${#FUNCTIONS[@]} -eq 0 ]; then
+#             echo "No functions changed."
+#           else
+#             echo "Functions changed: ${FUNCTIONS[@]}"
+#             echo "::set-output name=changed-functions::$(IFS=,; echo "${FUNCTIONS[*]}")"
+#           fi
+
+#   deploy:
+#     needs: detect-changes
+#     runs-on: ubuntu-latest
+#     if: ${{ steps.detect.outputs.changed-functions != '' }}
+#     strategy:
+#       matrix:
+#         function: ${{ fromJson(needs.detect-changes.outputs.changed-functions) }}
+
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v2
+
+#       - name: Deploy to Google Cloud Functions
+#         env:
+#           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+#           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+#         run: |
+#           cd ${{ matrix.function }}
+#           gcloud functions deploy ${{ matrix.function }} \
+#             --runtime nodejs14 \
+#             --trigger-http \
+#             --allow-unauthenticated \
+#             --project $PROJECT_ID

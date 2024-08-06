@@ -12,4 +12,23 @@ gcloud functions deploy crossmall_change_send_date --gen2 --runtime=python311 --
 
 ## selenium_function
 
-gcloud functions deploy selenium_function   --runtime python39   --trigger-http   --entry-point main   --source=. --gen2 --region=asia-northeast1 --env-vars-file=.env.yaml
+gcloud functions deploy selenium_function  \
+--runtime python39 \
+-trigger-http  \
+--entry-point main \
+--source=. \
+--gen2 \
+--region=asia-northeast1
+
+## selenium_function_bq_linkage
+
+gcloud functions deploy selenium_function_bq_linkage \
+--runtime python39 \
+--trigger-http \
+--entry-point main \
+--source=. \
+--gen2 \
+--region=asia-northeast1 \
+--memory=1024Mi \
+--no-allow-unauthenticated \
+--timeout=1800s

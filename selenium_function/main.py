@@ -1,23 +1,18 @@
+# %%
 import os
-import shutil
-import stat
 import time
-from datetime import date, datetime, timedelta
-from pathlib import Path
 
 import pandas as pd
 import pytz
 from dotenv import load_dotenv
-from google.cloud import bigquery
 
 # ChromeのWebDriverライブラリをインポート
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import Select, WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait
 
-load_dotenv(".env.yaml")
+load_dotenv(".env")
 
 
 def main(args):
@@ -60,8 +55,8 @@ def main(args):
     password = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.XPATH, "//form/p[2]/input"))
     )
-    username.send_keys(os.envirion["USERNAME"])  # ユーザ名を入力
-    password.send_keys(os.environ["PASS"])  # パスワードを入力
+    username.send_keys(os.getenv("USERNAME"))  # ユーザ名を入力
+    password.send_keys(os.getenv("PASS"))  # パスワードを入力
     driver.find_element(
         By.NAME, "commit"
     ).click()  # ログインボタンをクリック（name属性が'login'の場合）
@@ -90,77 +85,6 @@ def main(args):
 
     time.sleep(10)
 
-    update_rsl()
-
     driver.quit()
 
     return "200"
-
-
-def update_rsl():
-
-    tokyo_tz = pytz.timezone("Asia/Tokyo")
-
-    # 現在のTokyoの日付と時刻を取得
-    tokyo_now = datetime.now(tokyo_tz)
-
-    # 日付部分だけを取得
-    today = tokyo_now.date()
-
-    driver.get("https://www.crossmall.jp/rfc_stocks/?mId=&umId=0")
-
-    wait = WebDriverWait(driver, 60)
-    element = wait.until(EC.invisibility_of_element_located((By.ID, "loadmask-1186")))
-
-    # 検索条件
-    input2 = driver.find_element(By.ID, f"reflected_flag")
-    select = Select(input2)
-    select.select_by_value("true")
-
-    input2 = driver.find_element(By.ID, f"max_row")
-    select = Select(input2)
-    select.select_by_value("300")
-
-    # 検索ボタン
-    input2 = driver.find_element(
-        By.XPATH, f'//*[@id="rfc_stocks_form"]/div[1]/div[2]/div/input[1]'
-    )
-    input2.click()
-
-    time.sleep(5)
-
-    # 在庫数とJANコードを取得
-    stocks = []
-    try:
-        for index in range(1, 100, 1):
-            row_element = driver.find_element(
-                By.XPATH, f'//*[@id="gridview-1175-body"]/tr[{index}]/td[{9}]/div'
-            )
-            jan_code = row_element.text
-
-            row_element = driver.find_element(
-                By.XPATH, f'//*[@id="gridview-1175-body"]/tr[{index}]/td[{11}]/div/a'
-            )
-            stock = row_element.text
-
-            stocks.append({"jan_code": jan_code, "stock": stock})
-    except:
-        print(f"{index}まで成功")
-
-    df_stock = pd.DataFrame(stocks)
-    df_stock["jan_code"] = df_stock["jan_code"].astype(str)
-    df_stock["stock"] = df_stock["stock"].astype(int)
-    df_stock["partition_date"] = today
-
-    bq_client = bigquery.Client(project="doctor-ilcsi")
-
-    bigquery_job = bq_client.load_table_from_dataframe(
-        df_stock,
-        "doctor-ilcsi.dl_crossmall.rsl_zaiko",
-        job_config=bigquery.LoadJobConfig(
-            write_disposition="WRITE_APPEND",
-            time_partitioning=bigquery.TimePartitioning(
-                type_=bigquery.TimePartitioningType.DAY, field="partition_date"
-            ),
-        ),
-    ).result()
