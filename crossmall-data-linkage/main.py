@@ -103,12 +103,9 @@ def main(args):
     df_zaiko_request = df_sku_item[
         ~df_sku_item["item_sku_code"].isin(df_set_item["parent_item_sku_code"])
     ]
-    df_zaiko_request_filtered = df_zaiko_request[
-        df_zaiko_request["jan_code"].notna()
-    ].reset_index(drop=True)
     # 2. 在庫情報を取得
     zaiko_list = []
-    for index, row in df_zaiko_request_filtered.iterrows():
+    for index, row in df_zaiko_request.iterrows():
         try:
             zaiko = request_crossmall(
                 "get_stock",

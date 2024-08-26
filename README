@@ -4,6 +4,7 @@ gcloud functions deploy crosmoll-order-data-linkage --gen2 --runtime=python311 -
 
 ## crossmall-data-linkage
 
+cd crossmall-data-linkage
 gcloud functions deploy crossmall-data-linkage --gen2 --runtime=python311 --region=asia-northeast1 --source=. --entry-point=main --trigger-http
 
 ## crossmall_change_send_date
