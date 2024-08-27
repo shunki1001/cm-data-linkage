@@ -1,9 +1,9 @@
 ## crosmoll-order-data-linkage
-
+cd crosmoll-order-data-linkage
 gcloud functions deploy crosmoll-order-data-linkage --gen2 --runtime=python311 --region=asia-northeast1 --source=. --entry-point=main --trigger-http
 
 ## crossmall-data-linkage
-
+2024/8/27～運用停止
 cd crossmall-data-linkage
 gcloud functions deploy crossmall-data-linkage --gen2 --runtime=python311 --region=asia-northeast1 --source=. --entry-point=main --trigger-http
 
@@ -22,7 +22,7 @@ gcloud functions deploy selenium_function  \
 --region=asia-northeast1
 
 ## selenium_function_bq_linkage
-
+cd selenium_function_bq_linkage
 gcloud functions deploy selenium_function_bq_linkage \
 --runtime python39 \
 --trigger-http \

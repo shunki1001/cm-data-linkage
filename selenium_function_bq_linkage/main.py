@@ -107,31 +107,65 @@ def update_rsl(today):
     # 在庫数とJANコードを取得
     stocks = []
     try:
-        for index in range(1, 100, 1):
-            row_element = driver.find_element(
-                By.XPATH, f'//*[@id="gridview-1175-body"]/tr[{index}]/td[{9}]/div'
+        for index in range(1, 300, 1):
+            stocks.append(
+                {
+                    "cm_item_sku_code": driver.find_element(
+                        By.XPATH,
+                        f'//*[@id="gridview-1175-body"]/tr[{index}]/td[{3}]/div',
+                    ).text,
+                    "cm_item_title": driver.find_element(
+                        By.XPATH,
+                        f'//*[@id="gridview-1175-body"]/tr[{index}]/td[{4}]/div',
+                    ).text,
+                    "cm_item_zokusei_name1": driver.find_element(
+                        By.XPATH,
+                        f'//*[@id="gridview-1175-body"]/tr[{index}]/td[{5}]/div',
+                    ).text,
+                    "cm_item_zokusei_name2": driver.find_element(
+                        By.XPATH,
+                        f'//*[@id="gridview-1175-body"]/tr[{index}]/td[{6}]/div',
+                    ).text,
+                    "logi_item_code": driver.find_element(
+                        By.XPATH,
+                        f'//*[@id="gridview-1175-body"]/tr[{index}]/td[{7}]/div',
+                    ).text,
+                    "logi_item_title": driver.find_element(
+                        By.XPATH,
+                        f'//*[@id="gridview-1175-body"]/tr[{index}]/td[{8}]/div',
+                    ).text,
+                    "jan_code": driver.find_element(
+                        By.XPATH,
+                        f'//*[@id="gridview-1175-body"]/tr[{index}]/td[{9}]/div',
+                    ).text,
+                    "cm_stock": driver.find_element(
+                        By.XPATH,
+                        f'//*[@id="gridview-1175-body"]/tr[{index}]/td[{10}]/div',
+                    ).text,
+                    "rsl_stock": driver.find_element(
+                        By.XPATH,
+                        f'//*[@id="gridview-1175-body"]/tr[{index}]/td[{11}]/div/a',
+                    ).text,
+                    "updated_at": driver.find_element(
+                        By.XPATH,
+                        f'//*[@id="gridview-1175-body"]/tr[{index}]/td[{12}]/div',
+                    ).text,
+                }
             )
-            jan_code = row_element.text
-
-            row_element = driver.find_element(
-                By.XPATH, f'//*[@id="gridview-1175-body"]/tr[{index}]/td[{11}]/div/a'
-            )
-            stock = row_element.text
-
-            stocks.append({"jan_code": jan_code, "stock": stock})
     except:
         print(f"{index}まで成功")
 
     df_stock = pd.DataFrame(stocks)
     df_stock["jan_code"] = df_stock["jan_code"].astype(str)
-    df_stock["stock"] = df_stock["stock"].astype(int)
+    df_stock["cm_stock"] = df_stock["cm_stock"].astype(int)
+    df_stock["rsl_stock"] = df_stock["rsl_stock"].astype(int)
     df_stock["partition_date"] = today
 
     bq_client = bigquery.Client(project="doctor-ilcsi")
 
     bigquery_job = bq_client.load_table_from_dataframe(
         df_stock,
-        "doctor-ilcsi.dl_crossmall.rsl_zaiko",
+        "doctor-ilcsi.dl_crossmall.rsl_zaiko_from_cm",
         job_config=bigquery.LoadJobConfig(
             write_disposition="WRITE_APPEND",
             time_partitioning=bigquery.TimePartitioning(
